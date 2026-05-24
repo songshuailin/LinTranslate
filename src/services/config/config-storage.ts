@@ -19,6 +19,8 @@ function mergeWithDefault(config: Partial<AppConfig>): AppConfig {
 }
 
 export async function loadConfig(): Promise<AppConfig> {
+  clearLegacyConfig()
+
   try {
     const stored = await loadAppConfig()
     if (stored) {
@@ -29,13 +31,6 @@ export async function loadConfig(): Promise<AppConfig> {
     return cloneDefaultConfig()
   }
 
-  const legacyConfig = loadLegacyConfig()
-  if (legacyConfig) {
-    await saveConfig(legacyConfig)
-    localStorage.removeItem(CONFIG_KEY)
-    return legacyConfig
-  }
-
   return cloneDefaultConfig()
 }
 
@@ -43,14 +38,10 @@ export async function saveConfig(config: AppConfig): Promise<void> {
   await saveAppConfig(config)
 }
 
-function loadLegacyConfig(): AppConfig | null {
+function clearLegacyConfig(): void {
   try {
-    const stored = localStorage.getItem(CONFIG_KEY)
-    if (!stored) return null
-
-    return mergeWithDefault(JSON.parse(stored) as Partial<AppConfig>)
-  } catch {
     localStorage.removeItem(CONFIG_KEY)
-    return null
+  } catch {
+    // Ignore storage access errors; local app config remains the source of truth.
   }
 }

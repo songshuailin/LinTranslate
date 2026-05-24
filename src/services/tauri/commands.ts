@@ -36,3 +36,7 @@ export async function openAccessibilitySettings(): Promise<void> {
 export async function openScreenRecordingSettings(): Promise<void> {
   await invoke('open_screen_recording_settings')
 }
+
+export async function openGithubReleases(): Promise<void> {
+  await invoke('open_github_releases')
+}

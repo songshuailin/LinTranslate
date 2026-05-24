@@ -27,6 +27,24 @@ fn config_path() -> Result<PathBuf, String> {
     Ok(config_dir()?.join("config.json"))
 }
 
+fn restrict_config_permissions(path: &PathBuf) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        let permissions = fs::Permissions::from_mode(0o600);
+        fs::set_permissions(path, permissions)
+            .map_err(|e| format!("设置配置文件权限失败: {}", e))?;
+    }
+
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+    }
+
+    Ok(())
+}
+
 fn require_string(value: &Value, path: &[&str], label: &str) -> Result<(), String> {
     let mut current = value;
     for key in path {
@@ -89,5 +107,6 @@ pub fn save_app_config(config: Value) -> Result<(), String> {
     let path = dir.join("config.json");
     let text =
         serde_json::to_string_pretty(&config).map_err(|e| format!("序列化配置失败: {}", e))?;
-    fs::write(path, text).map_err(|e| format!("保存配置失败: {}", e))
+    fs::write(&path, text).map_err(|e| format!("保存配置失败: {}", e))?;
+    restrict_config_permissions(&path)
 }

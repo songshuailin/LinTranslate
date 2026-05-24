@@ -234,6 +234,7 @@ fn main() {
         commands::permissions::open_screen_recording_settings,
         commands::screenshot::start_screenshot_selection,
         commands::screenshot::read_screenshot_image,
+        commands::url::open_github_releases,
         commands::window::close_popup_window
     ]);
 

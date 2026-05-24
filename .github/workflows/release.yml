@@ -2,6 +2,14 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v0.1.0"
+        required: true
+        type: string
+  push:
+    tags:
+      - "v*"
 
 permissions:
   contents: write
@@ -45,13 +53,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 灵译 ${{ github.ref_name }}
+          tagName: ${{ github.event.inputs.tag || github.ref_name }}
+          releaseName: 灵译 ${{ github.event.inputs.tag || github.ref_name }}
           releaseBody: |
             灵译本地划词/截图气泡翻译器。
 
             - macOS: 下载 `.dmg`
             - Windows: 下载 `setup.exe`
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

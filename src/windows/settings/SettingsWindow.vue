@@ -6,9 +6,11 @@ import { defaultConfig } from '../../services/config/app-config'
 import { translateTextStream } from '../../services/translator/text-translator'
 import {
   getPermissionStatus,
+  openGithubReleases,
   openAccessibilitySettings,
   openScreenRecordingSettings,
 } from '../../services/tauri/commands'
+import { getVersion } from '@tauri-apps/api/app'
 
 type ModelsResponse = {
   data?: Array<{ id?: string } | string>
@@ -17,19 +19,47 @@ type ModelsResponse = {
 
 type PermissionKey = 'accessibility' | 'screenRecording'
 type PermissionValue = 'granted' | 'denied' | 'unsupported' | 'unknown'
+type ReleaseResponse = {
+  tag_name?: string
+  html_url?: string
+  draft?: boolean
+  prerelease?: boolean
+}
+
+const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/songshuailin/LinTranslate/releases/latest'
 
 const config = ref<AppConfig>(JSON.parse(JSON.stringify(defaultConfig)))
 const saving = ref(false)
 const testResult = ref<string>('')
 const providerBaseUrl = ref('')
 const providerApiKey = ref('')
+const showApiKey = ref(false)
 const loadingModels = ref(false)
 const modelOptions = ref<string[]>([])
 const translateInputText = ref('')
 const translating = ref(false)
 const translatedResult = ref('')
-const targetLanguages = ['中文', 'English', '日本語', '한국어']
-const appVersion = '0.1.0'
+const targetLanguages = [
+  '中文',
+  'English',
+  '日本語',
+  '한국어',
+  'Français',
+  'Deutsch',
+  'Español',
+  'Italiano',
+  'Português',
+  'Русский',
+  'العربية',
+  'हिन्दी',
+  'ไทย',
+  'Tiếng Việt',
+  'Bahasa Indonesia',
+]
+const appVersion = ref('0.1.0')
+const latestVersion = ref('')
+const hasNewVersion = ref(false)
+const checkingUpdate = ref(false)
 const permissionStatus = ref<Record<PermissionKey, PermissionValue>>({
   accessibility: 'unknown',
   screenRecording: 'unknown',
@@ -41,8 +71,9 @@ onMounted(async () => {
   config.value = await loadConfig()
   providerBaseUrl.value = config.value.textModel.baseUrl
   providerApiKey.value = config.value.textModel.apiKey
-  modelOptions.value = getAvailableModels()
+  appVersion.value = await getVersion().catch(() => '0.1.0')
   await refreshPermissions()
+  await checkLatestRelease()
 })
 
 onBeforeUnmount(() => {
@@ -55,6 +86,10 @@ function getAvailableModels() {
     config.value.visionModel.model,
     ...modelOptions.value,
   ].filter(Boolean)))
+}
+
+function canSelectModels() {
+  return modelOptions.value.length > 0 && !loadingModels.value
 }
 
 function normalizeApiBaseUrl(baseUrl: string) {
@@ -96,6 +131,51 @@ function normalizeModelList(data: ModelsResponse): string[] {
   return rawModels
     .map((item) => typeof item === 'string' ? item : item.id)
     .filter((id): id is string => Boolean(id))
+}
+
+function normalizeVersion(version: string) {
+  return version.trim().replace(/^v/i, '')
+}
+
+function compareVersions(a: string, b: string) {
+  const left = normalizeVersion(a).split('.').map(part => Number.parseInt(part, 10) || 0)
+  const right = normalizeVersion(b).split('.').map(part => Number.parseInt(part, 10) || 0)
+  const length = Math.max(left.length, right.length)
+
+  for (let i = 0; i < length; i += 1) {
+    const diff = (left[i] || 0) - (right[i] || 0)
+    if (diff !== 0) return diff
+  }
+
+  return 0
+}
+
+async function checkLatestRelease() {
+  checkingUpdate.value = true
+  try {
+    const resp = await fetch(GITHUB_LATEST_RELEASE_API, {
+      headers: { Accept: 'application/vnd.github+json' },
+    })
+    if (!resp.ok) return
+
+    const release = await resp.json() as ReleaseResponse
+    if (!release.tag_name || release.draft || release.prerelease) return
+
+    latestVersion.value = normalizeVersion(release.tag_name)
+    hasNewVersion.value = compareVersions(latestVersion.value, appVersion.value) > 0
+  } catch {
+    // Update checks should stay quiet; the version link still opens GitHub.
+  } finally {
+    checkingUpdate.value = false
+  }
+}
+
+async function openReleasePage() {
+  try {
+    await openGithubReleases()
+  } catch (e: unknown) {
+    testResult.value = `打开 GitHub 失败: ${e instanceof Error ? e.message : '未知错误'}`
+  }
 }
 
 async function fetchModels() {
@@ -283,15 +363,9 @@ const emit = defineEmits<{ close: [] }>()
         <div class="field-grid">
           <label class="field">
             <span class="field-label">目标语言</span>
-            <input
-              v-model="config.targetLanguage"
-              list="target-language-options"
-              class="input-field"
-              placeholder="中文"
-            />
-            <datalist id="target-language-options">
-              <option v-for="lang in targetLanguages" :key="lang" :value="lang" />
-            </datalist>
+            <select v-model="config.targetLanguage" class="input-field">
+              <option v-for="lang in targetLanguages" :key="lang" :value="lang">{{ lang }}</option>
+            </select>
           </label>
         </div>
       </section>
@@ -333,19 +407,47 @@ const emit = defineEmits<{ close: [] }>()
 
       <section class="section">
         <div class="section-header">
-          <h2 class="section-title">API 连接</h2>
-          <button class="btn btn-secondary" :disabled="loadingModels" @click="fetchModels">
+          <div>
+            <h2 class="section-title">API 连接</h2>
+            <p class="section-note">支持 OpenAI API compatible 接口</p>
+          </div>
+          <button class="btn btn-secondary" :disabled="loadingModels || !providerBaseUrl.trim()" @click="fetchModels">
             {{ loadingModels ? '获取中...' : '获取模型' }}
           </button>
         </div>
         <div class="field-grid">
           <label class="field field-wide">
             <span class="field-label">API 地址</span>
-            <input v-model="providerBaseUrl" class="input-field" placeholder="OpenAI-compatible /v1 地址" />
+            <input v-model="providerBaseUrl" class="input-field" placeholder="例如 http://127.0.0.1:8888/v1" />
           </label>
           <label class="field field-wide">
             <span class="field-label">API Key</span>
-            <input v-model="providerApiKey" class="input-field" placeholder="按服务要求填写" />
+            <span class="secret-field">
+              <input
+                v-model="providerApiKey"
+                :type="showApiKey ? 'text' : 'password'"
+                class="input-field secret-input"
+                placeholder="按服务要求填写"
+              />
+              <button
+                type="button"
+                class="icon-btn secret-toggle"
+                :aria-label="showApiKey ? '隐藏 API Key' : '显示 API Key'"
+                :title="showApiKey ? '隐藏 API Key' : '显示 API Key'"
+                @click="showApiKey = !showApiKey"
+              >
+                <svg v-if="!showApiKey" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m3 3 18 18" />
+                  <path d="M10.6 10.6A3 3 0 0 0 13.4 13.4" />
+                  <path d="M9.9 5.2A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a18.4 18.4 0 0 1-3.2 4.1" />
+                  <path d="M6.6 6.6C3.6 8.6 2 12 2 12s3.5 7 10 7a10.8 10.8 0 0 0 4.2-.8" />
+                </svg>
+              </button>
+            </span>
           </label>
         </div>
       </section>
@@ -357,14 +459,14 @@ const emit = defineEmits<{ close: [] }>()
         <div class="field-grid">
           <label class="field">
             <span class="field-label">文本翻译模型</span>
-            <select v-model="config.textModel.model" class="input-field">
+            <select v-model="config.textModel.model" class="input-field" :disabled="!canSelectModels()">
               <option v-if="getAvailableModels().length === 0" disabled value="">请先获取模型</option>
               <option v-for="model in getAvailableModels()" :key="`text-${model}`" :value="model">{{ model }}</option>
             </select>
           </label>
           <label class="field">
             <span class="field-label">截图翻译模型</span>
-            <select v-model="config.visionModel.model" class="input-field">
+            <select v-model="config.visionModel.model" class="input-field" :disabled="!canSelectModels()">
               <option v-if="getAvailableModels().length === 0" disabled value="">请先获取模型</option>
               <option v-for="model in getAvailableModels()" :key="`vision-${model}`" :value="model">{{ model }}</option>
             </select>
@@ -398,13 +500,20 @@ const emit = defineEmits<{ close: [] }>()
     </main>
 
     <footer class="settings-footer">
-      <div v-if="testResult" class="footer-status" :class="{
-        'footer-success': testResult.includes('成功') || testResult.includes('完成') || testResult.includes('已保存'),
-        'footer-fail': testResult.includes('失败'),
-      }">
-        {{ testResult }}
+      <button class="version-link" type="button" @click="openReleasePage">
+        <span class="version-dot" :class="{ 'version-dot-active': hasNewVersion }"></span>
+        <span>版本 {{ appVersion }}</span>
+        <span v-if="hasNewVersion" class="latest-version">最新 {{ latestVersion }}</span>
+        <span v-else-if="checkingUpdate" class="latest-version">检查中</span>
+      </button>
+      <div class="footer-status-wrap">
+        <div v-if="testResult" class="footer-status" :class="{
+          'footer-success': testResult.includes('成功') || testResult.includes('完成') || testResult.includes('已保存'),
+          'footer-fail': testResult.includes('失败'),
+        }">
+          {{ testResult }}
+        </div>
       </div>
-      <div v-else class="footer-version">版本 {{ appVersion }}</div>
       <button class="btn btn-primary" :disabled="saving" @click="handleSave">
         {{ saving ? '保存中...' : '保存配置' }}
       </button>
@@ -479,6 +588,13 @@ const emit = defineEmits<{ close: [] }>()
   line-height: 18px;
 }
 
+.section-note {
+  margin: 2px 0 0;
+  color: #7b8494;
+  font-size: 11px;
+  line-height: 15px;
+}
+
 .field-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -524,6 +640,56 @@ const emit = defineEmits<{ close: [] }>()
 .input-field:focus {
   border-color: #3f7fcd;
   box-shadow: 0 0 0 3px rgba(63, 127, 205, 0.14);
+}
+
+.input-field:disabled {
+  cursor: not-allowed;
+  background: #f3f5f8;
+  color: #8a93a3;
+}
+
+.secret-field {
+  position: relative;
+  display: block;
+}
+
+.secret-input {
+  padding-right: 42px;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #687385;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: #eef2f6;
+  color: #202733;
+}
+
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.secret-toggle {
+  position: absolute;
+  top: 2px;
+  right: 3px;
 }
 
 .textarea {
@@ -711,15 +877,60 @@ const emit = defineEmits<{ close: [] }>()
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 10px;
   padding: 10px 16px 12px;
   border-top: 1px solid #d8dde6;
   background: rgba(251, 251, 252, 0.96);
 }
 
-.footer-status {
+.version-link {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  max-width: 230px;
+  min-width: 0;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #7b8494;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.version-link:hover {
+  color: #2463ad;
+}
+
+.version-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #c7ced8;
+}
+
+.version-dot-active {
+  background: #22a447;
+  box-shadow: 0 0 0 3px rgba(34, 164, 71, 0.14);
+}
+
+.latest-version {
+  overflow: hidden;
+  color: #22a447;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footer-status-wrap {
   flex: 1 1 auto;
+  min-width: 0;
+}
+
+.footer-status {
   min-width: 0;
   overflow: hidden;
   color: #596273;
@@ -728,15 +939,6 @@ const emit = defineEmits<{ close: [] }>()
   line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.footer-version {
-  flex: 1 1 auto;
-  min-width: 0;
-  color: #7b8494;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 18px;
 }
 
 .footer-success {
