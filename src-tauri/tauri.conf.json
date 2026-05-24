@@ -1,0 +1,39 @@
+{
+  "productName": "灵译",
+  "version": "0.1.0",
+  "identifier": "com.localbubble.translator",
+  "build": {
+    "beforeDevCommand": "npm run dev:frontend",
+    "beforeBuildCommand": "npm run build:frontend",
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "灵译",
+        "width": 560,
+        "height": 480,
+        "visible": false,
+        "skipTaskbar": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' http: https:; script-src 'self' 'unsafe-inline'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "app"],
+    "macOS": {
+      "entitlements": null,
+      "signingIdentity": "-"
+    },
+    "icon": [
+      "icons/icon.png"
+    ]
+  },
+  "plugins": {}
+}
