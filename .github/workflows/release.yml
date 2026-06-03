@@ -81,6 +81,17 @@ jobs:
           mkdir -p "$RUNNER_TEMP/apple"
           printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/apple/AuthKey_${APPLE_API_KEY}.p8"
 
+      - name: Use ad-hoc signing when Apple certificate is unavailable
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+        run: |
+          if [ -n "$APPLE_CERTIFICATE" ]; then
+            exit 0
+          fi
+
+          node -e "const fs=require('fs'); const path='src-tauri/tauri.conf.json'; const json=JSON.parse(fs.readFileSync(path,'utf8')); json.bundle.macOS.signingIdentity='-'; fs.writeFileSync(path, JSON.stringify(json, null, 2) + '\n');"
+
       - name: Build and upload bundles
         uses: tauri-apps/tauri-action@v0
         env:
