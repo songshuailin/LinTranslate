@@ -178,7 +178,7 @@ async function getPopupWindow(): Promise<WebviewWindow> {
     transparent: true,
     alwaysOnTop: true,
     skipTaskbar: true,
-    shadow: true,
+    shadow: false,
     focus: true,
   })
 

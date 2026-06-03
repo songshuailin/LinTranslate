@@ -1,6 +1,6 @@
 {
   "productName": "灵译",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "identifier": "com.localbubble.translator",
   "build": {
     "beforeDevCommand": "npm run dev:frontend",
@@ -28,8 +28,7 @@
     "active": true,
     "targets": ["dmg", "app"],
     "macOS": {
-      "entitlements": null,
-      "signingIdentity": "-"
+      "entitlements": null
     },
     "icon": [
       "icons/icon.png"

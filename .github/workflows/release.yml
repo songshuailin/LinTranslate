@@ -46,17 +46,55 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Load release notes
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          body_file=".github/release-notes/${RELEASE_TAG}.md"
+          if [ -f "$body_file" ]; then
+            {
+              echo "RELEASE_BODY<<EOF"
+              cat "$body_file"
+              echo "EOF"
+            } >> "$GITHUB_ENV"
+          else
+            {
+              echo "RELEASE_BODY<<EOF"
+              echo "灵译本地划词/截图气泡翻译器。"
+              echo
+              echo "- macOS: 下载 .dmg"
+              echo "EOF"
+            } >> "$GITHUB_ENV"
+          fi
+
+      - name: Prepare Apple API key
+        shell: bash
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          if [ -z "$APPLE_API_KEY_P8" ] || [ -z "$APPLE_API_KEY" ]; then
+            exit 0
+          fi
+
+          mkdir -p "$RUNNER_TEMP/apple"
+          printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/apple/AuthKey_${APPLE_API_KEY}.p8"
+
       - name: Build and upload bundles
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_PATH: ${{ secrets.APPLE_API_KEY_P8 != '' && format('{0}/apple/AuthKey_{1}.p8', runner.temp, secrets.APPLE_API_KEY) || '' }}
         with:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: 灵译 ${{ github.event.inputs.tag || github.ref_name }}
-          releaseBody: |
-            灵译本地划词/截图气泡翻译器。
-
-            - macOS: 下载 `.dmg`
+          releaseBody: ${{ env.RELEASE_BODY }}
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

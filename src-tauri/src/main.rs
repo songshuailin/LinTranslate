@@ -74,7 +74,7 @@ fn open_popup(app: &tauri::AppHandle, url: String) {
         .transparent(true)
         .always_on_top(true)
         .skip_taskbar(true)
-        .shadow(true)
+        .shadow(false)
         .focused(true)
         .build()
     {
