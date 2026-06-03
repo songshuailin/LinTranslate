@@ -68,40 +68,10 @@ jobs:
             } >> "$GITHUB_ENV"
           fi
 
-      - name: Prepare Apple API key
-        shell: bash
-        env:
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
-        run: |
-          if [ -z "$APPLE_API_KEY_P8" ] || [ -z "$APPLE_API_KEY" ]; then
-            exit 0
-          fi
-
-          mkdir -p "$RUNNER_TEMP/apple"
-          printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/apple/AuthKey_${APPLE_API_KEY}.p8"
-
-      - name: Use ad-hoc signing when Apple certificate is unavailable
-        shell: bash
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-        run: |
-          if [ -n "$APPLE_CERTIFICATE" ]; then
-            exit 0
-          fi
-
-          node -e "const fs=require('fs'); const path='src-tauri/tauri.conf.json'; const json=JSON.parse(fs.readFileSync(path,'utf8')); json.bundle.macOS.signingIdentity='-'; fs.writeFileSync(path, JSON.stringify(json, null, 2) + '\n');"
-
       - name: Build and upload bundles
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_KEY_PATH: ${{ secrets.APPLE_API_KEY_P8 != '' && format('{0}/apple/AuthKey_{1}.p8', runner.temp, secrets.APPLE_API_KEY) || '' }}
         with:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: 灵译 ${{ github.event.inputs.tag || github.ref_name }}

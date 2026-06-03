@@ -28,7 +28,8 @@
     "active": true,
     "targets": ["dmg", "app"],
     "macOS": {
-      "entitlements": null
+      "entitlements": null,
+      "signingIdentity": "-"
     },
     "icon": [
       "icons/icon.png"

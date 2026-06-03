@@ -98,9 +98,9 @@ Windows packaging is paused until there is a Windows test device. Current GitHub
 
 ### macOS permissions and release signing / macOS 权限与发布签名
 
-macOS Accessibility and Screen Recording permissions are tied to the app identity. For updates to keep existing permissions, release builds must keep the same bundle identifier (`com.localbubble.translator`) and be signed with the same Developer ID Application certificate. Ad-hoc signing (`signingIdentity: "-"`) can make each downloaded build look like a different app to macOS, forcing users to delete and re-add permissions.
+macOS Accessibility and Screen Recording permissions are tied to the app identity. For updates to keep existing permissions, release builds must keep the same bundle identifier (`com.localbubble.translator`) and be signed with the same Developer ID Application certificate. Ad-hoc signing (`signingIdentity: "-"`) can make each downloaded build look like a different app to macOS, forcing users to delete and re-add permissions. The current public CI can build ad-hoc `.dmg` files; stable permission-preserving releases require switching CI to Developer ID signing.
 
-macOS 的辅助功能和屏幕录制权限会绑定应用身份。为了让覆盖安装后的新版本继续使用旧授权，发布包必须保持同一个 bundle identifier（`com.localbubble.translator`），并始终使用同一个 Developer ID Application 证书签名。ad-hoc 签名（`signingIdentity: "-"`）可能让每次下载的新包都被 macOS 当成不同应用，从而需要用户删除旧授权后重新添加。
+macOS 的辅助功能和屏幕录制权限会绑定应用身份。为了让覆盖安装后的新版本继续使用旧授权，发布包必须保持同一个 bundle identifier（`com.localbubble.translator`），并始终使用同一个 Developer ID Application 证书签名。ad-hoc 签名（`signingIdentity: "-"`）可能让每次下载的新包都被 macOS 当成不同应用，从而需要用户删除旧授权后重新添加。当前公开 CI 可以构建 ad-hoc `.dmg`；要稳定保留权限，需要把 CI 切换到 Developer ID 签名。
 
 Configure these GitHub Secrets before publishing a signed macOS release:
 
