@@ -1,18 +1,14 @@
 import type { OpenAICompatibleModelConfig } from '../config/app-config'
 import type { TranslateTextInput, TranslationStreamOptions } from './translator-types'
 import { buildApiErrorMessage } from './api-errors'
+import { buildNaturalTranslationRules } from './translation-prompts'
 
 export function buildTextTranslateSystemPrompt(targetLanguage: string): string {
   return `你是一个专业翻译引擎。
 
 任务：将用户提供的文本翻译成${targetLanguage}。
 
-规则：
-- 只输出翻译结果。不要解释、注释或前缀。
-- 不要总结，不要扩写。保持原文含义准确。
-- 尽量保留换行和段落结构。
-- 代码、命令、路径、变量名、API名称等专有内容不要错误翻译。
-- 混有英文技术术语时，必要时保留原文。`.trim()
+${buildNaturalTranslationRules(targetLanguage)}`.trim()
 }
 
 export async function* translateTextStream(
