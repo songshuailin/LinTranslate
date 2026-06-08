@@ -13,6 +13,7 @@ const emit = defineEmits<{
   copy: [text: string]
   dragStart: []
   dragEnd: []
+  togglePin: []
 }>()
 
 const isCopied = ref(false)
@@ -129,6 +130,17 @@ function popupTitle(): string {
         <button title="复制" class="action-btn" @pointerdown.stop @click="copyText">
           {{ isCopied ? '已复制' : '复制' }}
         </button>
+        <button
+          :title="popup.isPinned ? '取消固定' : '固定窗口'"
+          class="action-btn pin-btn"
+          :class="{ 'pin-active': popup.isPinned }"
+          @pointerdown.stop @click="emit('togglePin')"
+        >
+          <svg viewBox="0 0 24 24" class="pin-icon">
+            <path d="M12 2L9 8H4l3 5v7h2v-5l3-5H8l2-6h2Z" />
+            <line x1="12" y1="2" x2="12" y2="22" />
+          </svg>
+        </button>
         <button title="关闭" class="action-btn" @pointerdown.stop @click="emit('close')">✕</button>
       </div>
     </div>
@@ -220,6 +232,31 @@ function popupTitle(): string {
 
 .action-btn:hover {
   background-color: #f3f4f6;
+}
+
+.pin-icon {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: #9ca3af;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 150ms ease;
+}
+
+.pin-active .pin-icon {
+  fill: #3b82f6;
+  stroke: #3b82f6;
+}
+
+.pin-btn:hover .pin-icon {
+  stroke: #374151;
+}
+
+.pin-active.pin-btn:hover .pin-icon {
+  stroke: #2563eb;
+  fill: #2563eb;
 }
 
 .content-area {

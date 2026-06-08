@@ -62,7 +62,15 @@ fn require_string(value: &Value, path: &[&str], label: &str) -> Result<(), Strin
 fn validate_model_config(value: &Value, key: &str, label: &str) -> Result<(), String> {
     let model_config = value.get(key).ok_or_else(|| format!("{}配置缺失", label))?;
 
-    require_string(value, &[key, "baseUrl"], &format!("{} API 地址", label))?;
+    // Skip validation if the model is not configured at all (baseUrl is empty).
+    let base_url = model_config
+        .get("baseUrl")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    if base_url.trim().is_empty() {
+        return Ok(());
+    }
+
     require_string(value, &[key, "model"], &format!("{}模型", label))?;
 
     let temperature = model_config

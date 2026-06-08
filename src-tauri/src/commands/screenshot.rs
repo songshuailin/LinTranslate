@@ -84,6 +84,7 @@ fn cancel_active_screenshot() {
 pub fn capture_screenshot_to_temp() -> Result<String, String> {
     if SCREENSHOT_IN_PROGRESS.swap(true, Ordering::SeqCst) {
         cancel_active_screenshot();
+        SCREENSHOT_IN_PROGRESS.store(false, Ordering::SeqCst);
         return Err("截图已取消".to_string());
     }
 

@@ -302,7 +302,10 @@ onMounted(async () => {
       if (!event.payload) {
         window.setTimeout(() => {
           if (!isPopupDragActive.value) {
-            closePopupWindow()
+            const hasPinned = popupStore.popups.some(p => p.isPinned)
+            if (!hasPinned) {
+              closePopupWindow()
+            }
           }
         }, 160)
       }
@@ -382,6 +385,7 @@ async function destroyPopupHostWindow() {
         :key="p.id"
         :popup="p"
         @close="closePopup(p.id)"
+        @toggle-pin="popupStore.togglePin(p.id)"
         @drag-start="markPopupDragStart"
         @drag-end="markPopupDragEnd"
       />
