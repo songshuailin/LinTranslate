@@ -15,5 +15,4 @@ export type TranslationPopup = {
   errorMessage?: string
   position: { x: number; y: number }
   createdAt: number
-  isPinned: boolean
 }

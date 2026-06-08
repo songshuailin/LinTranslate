@@ -14,7 +14,6 @@ const popupStore = reactive({
       status: 'idle' as TranslationStatus,
       position: { x: 0, y: 0 },
       createdAt: Date.now(),
-      isPinned: false,
       ...payload,
     } as TranslationPopup
     this.popups.push(popup)
@@ -48,11 +47,6 @@ const popupStore = reactive({
 
   setActivePopup(id: string): void {
     this.activePopupId = id
-  },
-
-  togglePin(id: string): void {
-    const popup = this.popups.find(p => p.id === id)
-    if (popup) popup.isPinned = !popup.isPinned
   },
 })
 
